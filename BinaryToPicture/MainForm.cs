@@ -37,25 +37,27 @@ namespace BinaryToPicture
                     Array.Copy(binaryData, 0, dataWithLength, 4, binaryData.Length);                    
                 }
             }
-            
-            Bitmap bitmap = new Bitmap(bitmapBlueplanet.Width, bitmapBlueplanet.Height);
+
+            int rows = dataWithLength.Length / (bitmapBlueplanet.Width * 4) + 1;
+            Bitmap bitmap = new Bitmap(bitmapBlueplanet.Width, rows);
+
+            var dataWithPadding = new byte[bitmap.Width * bitmap.Height * 4];
+            Array.Copy(dataWithLength, dataWithPadding, dataWithLength.Length);
+
             for (int i = 0; i < bitmap.Height; i++)
             {
                 for (int j = 0; j < bitmap.Width; j++)
                 {
-                    Color colorOriginal = bitmapBlueplanet.GetPixel(j, i);
+                    //Color colorOriginal = bitmapBlueplanet.GetPixel(j, i);
 
-                    int counter = j + bitmap.Width * i;
-
-                    if (counter >= dataWithLength.Length)
-                    {
-                        bitmap.SetPixel(j, i, colorOriginal);
-                    }
-                    else
-                    {
-                        Color c = Color.FromArgb(dataWithLength[counter], colorOriginal);
-                        bitmap.SetPixel(j, i, c);
-                    }
+                    int counter = (j + bitmap.Width * i) * 4;
+                   
+                    Color c = Color.FromArgb(
+                        dataWithPadding[counter],
+                        dataWithPadding[counter + 1],
+                        dataWithPadding[counter + 2],
+                        dataWithPadding[counter + 3]);
+                    bitmap.SetPixel(j, i, c);
                 }
             }
 
@@ -70,12 +72,13 @@ namespace BinaryToPicture
         {
             Bitmap bitmap = (Bitmap)Image.FromFile(pngFileName);
 
+            var pixel0 = bitmap.GetPixel(0, 0);
             byte[] lengthData = new byte[4] 
-            { 
-                bitmap.GetPixel(0, 0).A, 
-                bitmap.GetPixel(1, 0).A, 
-                bitmap.GetPixel(2, 0).A, 
-                bitmap.GetPixel(3, 0).A 
+            {
+                pixel0.A,
+                pixel0.R,
+                pixel0.G,
+                pixel0.B 
             };
 
             int length = 0;
@@ -93,13 +96,19 @@ namespace BinaryToPicture
             {
                 for (int j = 0; j < bitmap.Width; j++)
                 {
-                    Color color = bitmap.GetPixel(j, i);
+                    int counter = j + bitmap.Width * i - 1;
 
-                    int counter = j + bitmap.Width * i - 4;
-
-                    if (counter >= 0 && counter <= length - 1)
+                    if (counter >= 0)
                     {
-                        data[counter] = color.A;
+                        Color color = bitmap.GetPixel(j, i);
+                        if (counter * 4 < data.Length)
+                            data[counter * 4] = color.A;
+                        if (counter * 4 + 1 < data.Length)
+                            data[counter * 4 + 1] = color.R;
+                        if (counter * 4 + 2 < data.Length)
+                            data[counter * 4 + 2] = color.G;
+                        if (counter * 4 + 3 < data.Length)
+                            data[counter * 4 + 3] = color.B;
                     }
                 }
             }
